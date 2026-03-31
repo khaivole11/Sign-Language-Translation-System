@@ -1,0 +1,2 @@
+id	signs_file	duration	fps	num_frames	feature_shape	dtype
+introduce	data/processed/introduce.npy	14.92	25.0	373	46x1024	float32
