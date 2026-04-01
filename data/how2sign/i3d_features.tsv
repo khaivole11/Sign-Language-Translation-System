@@ -1,2 +1,3 @@
 id	signs_file	duration	fps	num_frames	feature_shape	dtype
 introduce	data/processed/introduce.npy	14.92	25.0	373	46x1024	float32
+again_sign	data/how2sign/i3d_features/again_sign_db51dd1e.npy	1.16	25.0	29	3x1024	float32
