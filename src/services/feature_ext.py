@@ -66,7 +66,7 @@ def load_i3d_backbone(
     - strict=False
     """
     try:
-        from models.i3d.pytorch_i3d import InceptionI3d
+        from core.pytorch_i3d import InceptionI3d
     except ImportError as e:
         raise ImportError(
             "Không import được pytorch_i3d.InceptionI3d. "
