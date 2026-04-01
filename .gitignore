@@ -1,4 +1,5 @@
-models/i3d/*.pt
-models/i3d/*.pth
-models/i3d/*.pth.tar
-data/
+*.pyc
+__pycache__/
+*.out
+*.log
+*.pt
