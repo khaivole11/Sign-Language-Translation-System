@@ -19,6 +19,7 @@ API_TRANSLATE_URL=http://localhost:8002/translate  (hoặc URL API của máy ch
 MAX_UPLOAD_MB=50
 TIMEOUT_SEC=60
 ```
+Sau đó chạy 2 file mock_tv1.py và mock_tv2.py
 
 ## Bước 2: Chạy Backend
 
