@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     VOCAB_MODEL_PATH: str
     BEAM_SIZE: int = 5
     MAX_TOKENS: int = 1600
-    TEMP_DATA_DIR: str = "../data"
+    TEMP_DATA_DIR: str = "data"
 
     class Config:
         env_file = Path(__file__).resolve().parent / ".env"

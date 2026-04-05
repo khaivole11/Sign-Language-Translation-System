@@ -1,0 +1,52 @@
+/* ── Global Reset & Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #f5fafd;
+  color: #171c1f;
+  font-family: 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Manrope font import ── */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f5fafd; }
+::-webkit-scrollbar-thumb { background: #bcc8ce; border-radius: 9999px; }
+
+/* ── Button hover states ── */
+button:hover { opacity: 0.9; }
+button:active { transform: scale(0.98); }
+
+/* ── Link reset ── */
+a { color: inherit; text-decoration: none; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.fade-up  { animation: fadeUp 0.5s ease forwards; }
+.spinning { animation: spin 1.2s linear infinite; }
+.pulsing  { animation: pulse 1.5s ease-in-out infinite; }
