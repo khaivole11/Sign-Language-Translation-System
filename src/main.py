@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Giúp module src/ gọi ngang hàng configs/ mà không văng lỗi ModuleNotFound
@@ -9,8 +10,21 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from src.inference import build_dummy_tsv, generate_translation, parse_best_translation
 from configs.config import settings
+from src.backend.app import app as backend_app
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount backend API routes
+app.mount("/api", backend_app)
 
 # Định nghĩa khuôn mẫu trả về kết quả JSON để API Interface nhận chuẩn
 class InferenceResponse(BaseModel):
