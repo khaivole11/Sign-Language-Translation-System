@@ -52,9 +52,9 @@ export default function UploadBox() {
             {rejectMessage ? (
               <span style={{ color: "#b91c1c" }}>{rejectMessage}</span>
             ) : file ? (
-              `${(file.size / 1024 / 1024).toFixed(2)} MB — đang chuẩn bị...`
+              `${(file.size / 1024 / 1024).toFixed(2)} MB — preparing...`
             ) : (
-              `MP4, MOV hoặc AVI — tối đa ${MAX_UPLOAD_MB} MB (khớp giới hạn máy chủ)`
+              `MP4, MOV or AVI — max ${MAX_UPLOAD_MB} MB`
             )}
           </p>
         </div>

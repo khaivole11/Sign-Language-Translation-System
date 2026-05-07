@@ -15,11 +15,11 @@ from tqdm.auto import tqdm
 
 # Cho phép chạy trực tiếp:
 # python src/services/feature_ext.py ...
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from src.vision.processor import (
+from src.backend.vision.processor import (
     build_clip_indices,
     clip_to_tensor,
     list_video_files,
@@ -66,7 +66,7 @@ def load_i3d_backbone(
     - strict=False
     """
     try:
-        from src.core.pytorch_i3d import InceptionI3d
+        from src.backend.core.pytorch_i3d import InceptionI3d
     except ImportError as e:
         raise ImportError(
             "Không import được pytorch_i3d.InceptionI3d. "

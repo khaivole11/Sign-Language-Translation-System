@@ -5,14 +5,14 @@ import { translateVideo } from "../../services/api";
 import { captureVideoPreviewDataUrl } from "../../utils/videoPreview";
 
 const MESSAGES_UPLOAD = [
-  "Đang tải video lên máy chủ...",
-  "Đang gửi dữ liệu an toàn...",
+  "Uploading video to server...",
+  "Sending data securely...",
 ];
 
 const MESSAGES_SERVER = [
-  "Đang trích xuất đặc trưng (TV1)...",
-  "Đang dịch sang văn bản (TV2)...",
-  "Đang tinh chỉnh kết quả...",
+  "Extracting features (I3D)...",
+  "Translating to text (Fairseq)...",
+  "Refining translation...",
 ];
 
 export default function ProcessingScreen({ file, fileName }) {
@@ -45,6 +45,7 @@ export default function ProcessingScreen({ file, fileName }) {
 
     (async () => {
       const previewUrl = await captureVideoPreviewDataUrl(file);
+      const videoUrl = URL.createObjectURL(file);
       if (cancelled) return;
 
       try {
@@ -72,11 +73,11 @@ export default function ProcessingScreen({ file, fileName }) {
         clearPulse();
         if (cancelled) return;
         setBarProgress(100);
-        navigate("/result", { state: { result, previewUrl } });
+        navigate("/result", { state: { result, previewUrl, videoUrl } });
       } catch (e) {
         clearPulse();
         if (!cancelled) {
-          setError(e.message || "Có lỗi khi gửi video lên máy chủ.");
+          setError(e.message || "Failed to upload video to server.");
         }
       }
     })();
@@ -109,7 +110,7 @@ export default function ProcessingScreen({ file, fileName }) {
       </div>
 
       <div style={styles.titleSection}>
-        <h1 style={styles.title}>Đang xử lý video</h1>
+        <h1 style={styles.title}>Processing Video</h1>
         <p style={styles.subtitle}>
           {error ? (
             <>
@@ -119,7 +120,7 @@ export default function ProcessingScreen({ file, fileName }) {
                 onClick={() => navigate("/", { replace: true })}
                 style={styles.retryBtn}
               >
-                Về trang chủ
+                Go back home
               </button>
             </>
           ) : (
@@ -140,14 +141,14 @@ export default function ProcessingScreen({ file, fileName }) {
         <div style={styles.pill}>
           <div style={styles.pillDot} />
           <span style={styles.pillText}>
-            {serverPhase ? "ĐANG XỬ LÝ AI" : "ĐANG TẢI LÊN"} · {barProgress}%
+            {serverPhase ? "PROCESSING" : "UPLOADING"} · {barProgress}%
           </span>
         </div>
 
         <div style={styles.gestureChip}>
           <EyeIcon />
           <span style={styles.chipText}>
-            {serverPhase ? "TV1 / TV2" : "UPLOAD"}
+            {serverPhase ? "I3D / FAIRSEQ" : "UPLOAD"}
           </span>
         </div>
       </div>
@@ -155,12 +156,10 @@ export default function ProcessingScreen({ file, fileName }) {
       <div style={styles.infoCard}>
         <div style={styles.infoHeader}>
           <AiIcon />
-          <span style={styles.infoTitle}>Pipeline TV1 → TV2</span>
+          <span style={styles.infoTitle}>Monolithic Processing Pipeline</span>
         </div>
         <p style={styles.infoDesc}>
-          Sau khi tải lên gateway, hệ thống gọi TV1 để trích xuất đặc trưng, rồi TV2 để
-          sinh văn bản. Bạn có thể đối chiếu <strong>request id</strong> ở màn hình kết quả
-          với log máy chủ.
+          After uploading to the server, the system automatically extracts video features and translates them to English. You can verify the <strong>request id</strong> in the results screen for debugging.
         </p>
         <div style={styles.dots}>
           <span style={styles.dot} />

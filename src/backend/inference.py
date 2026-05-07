@@ -54,7 +54,13 @@ def generate_translation(temp_dir: Path) -> str:
         "--sentencepiece-model", str(Path(settings.VOCAB_MODEL_PATH).resolve()),
     ]
     
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    import os
+    env = os.environ.copy()
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    fairseq_dir = base_dir / "fairseq"
+    env['PYTHONPATH'] = str(fairseq_dir) + os.pathsep + env.get('PYTHONPATH', '')
+
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     if result.returncode != 0:
         if "ZeroDivisionError: division by zero" in result.stderr:
             pass # Ignore timer resolution crash on Windows

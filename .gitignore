@@ -6,3 +6,4 @@ __pycache__/
 venv/
 *.env
 *.pth.tar
+data/infer_*

@@ -1,10 +1,17 @@
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
+import { useNavigate } from "react-router-dom";
 import UploadBox from "../components/upload/UploadBox";
 
 const imgPerson = "https://www.figma.com/api/mcp/asset/87c9c2f2-03b9-4bdb-b5da-6b783c00cd9f";
 
 export default function HomePage() {
+  const navigate = useNavigate();
+
+  const handleUploadSuccess = (file, fileName) => {
+    navigate("/processing", { state: { file, fileName } });
+  };
+
   return (
     <div style={styles.page}>
       <Header />
@@ -13,8 +20,7 @@ export default function HomePage() {
         {/* Hero */}
         <section style={styles.heroSection}>
           <h1 style={styles.heroTitle}>
-            Dịch Ngôn Ngữ Ký Hiệu<br />
-            <span style={styles.accent}>Bằng AI</span>
+            Sign Language Translation<br />
           </h1>
           <div style={styles.steps}>
             <Step icon={<UploadIcon />} label="Upload" />
@@ -27,7 +33,7 @@ export default function HomePage() {
 
         {/* Upload box */}
         <section style={styles.uploadSection}>
-          <UploadBox />
+          <UploadBox onSuccess={handleUploadSuccess} />
         </section>
 
         {/* Technology section */}
@@ -35,13 +41,13 @@ export default function HomePage() {
           <div style={styles.techLeft}>
             <div style={styles.badge}><span style={styles.badgeText}>Technology</span></div>
             <h2 style={styles.techTitle}>
-              Công nghệ nhận diện cử chỉ{" "}
-              <span style={styles.accent}>thế hệ mới</span>
+              Next-generation gesture{" "}
+              <span style={styles.accent}>recognition</span>
             </h2>
             <p style={styles.techDesc}>
-              Hệ thống của chúng tôi sử dụng mạng nơ-ron tích chập 3D để phân tích
-              từng khung hình, nhận diện chính xác các sắc thái biểu cảm và tốc độ
-              của đôi tay.
+              Our system uses 3D Convolutional Neural Networks (I3D) to analyze
+              each frame, accurately recognizing nuanced expressions and the
+              speed of hand gestures, combined with Fairseq for precise text generation.
             </p>
           </div>
 
@@ -52,8 +58,8 @@ export default function HomePage() {
             <div style={styles.chip}>
               <div style={styles.chipDot}><LiveIcon /></div>
               <div>
-                <p style={styles.chipLabel}>Live Recognition</p>
-                <p style={styles.chipValue}>98.4% Accuracy</p>
+                <p style={styles.chipLabel}>Monolithic Architecture</p>
+                <p style={styles.chipValue}>High Performance</p>
               </div>
             </div>
           </div>

@@ -10,8 +10,7 @@ function buildExportText(result) {
     `raw: ${result?.rawText ?? ""}`,
     `refined: ${result?.refinedText ?? ""}`,
     "",
-    `time_server_features_sec: ${result?.timeServer?.features?.toFixed?.(4) ?? ""}`,
-    `time_server_translate_sec: ${result?.timeServer?.translate?.toFixed?.(4) ?? ""}`,
+    `time_server_total_sec: ${result?.timeServer?.total?.toFixed?.(4) ?? ""}`,
     `time_client_upload_ms: ${result?.timeClient?.uploadMs ?? ""}`,
     `time_client_roundtrip_ms: ${result?.timeClient?.roundTripMs ?? ""}`,
   ];
@@ -22,14 +21,14 @@ function buildExportText(result) {
   return lines.join("\n");
 }
 
-export default function ResultScreen({ result, previewUrl }) {
+export default function ResultScreen({ result, previewUrl, videoUrl }) {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const rawText = result?.rawText ?? "";
   const refinedText = result?.refinedText ?? "";
   const duration = result?.duration;
-  const language = result?.language || "Sign → Vietnamese";
+  const language = result?.language || "Sign → English";
   const requestId = result?.requestId || "";
   const warnings = result?.warnings || [];
   const stub = result?.stub;
@@ -46,7 +45,7 @@ export default function ResultScreen({ result, previewUrl }) {
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({ title: "Kết quả dịch", text: refinedText });
+      navigator.share({ title: "Translation Result", text: refinedText });
     }
   };
 
@@ -62,21 +61,21 @@ export default function ResultScreen({ result, previewUrl }) {
   return (
     <div style={styles.wrapper}>
       <div style={styles.titleWrap}>
-        <h1 style={styles.title}>Kết quả dịch</h1>
+        <h1 style={styles.title}>Translation Result</h1>
         <div style={styles.titleUnderline} />
       </div>
 
       {stub ? (
         <div style={styles.stubBanner}>
-          <strong>Chế độ stub:</strong> backend chưa cấu hình đủ{" "}
+          <strong>Stub Mode:</strong> backend configuration is incomplete.{" "}
           <code style={styles.code}>API_FEATURE_URL</code> +{" "}
-          <code style={styles.code}>API_TRANSLATE_URL</code> — đang dùng dữ liệu giả lập.
+          <code style={styles.code}>API_TRANSLATE_URL</code> — using mock data.
         </div>
       ) : null}
 
       {warnings.length > 0 ? (
         <div style={styles.warnBanner}>
-          <strong>Cảnh báo từ API:</strong>
+          <strong>API Warnings:</strong>
           <ul style={styles.warnList}>
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
@@ -88,31 +87,37 @@ export default function ResultScreen({ result, previewUrl }) {
       <div style={styles.content}>
         <div style={styles.leftCol}>
           <div style={styles.thumbCard}>
-            <img src={thumbSrc} alt="Preview khung hình đầu video" style={styles.thumb} />
-            <div style={styles.playOverlay}>
-              <div style={styles.playBtn}>
-                <PlayIcon />
+            {videoUrl ? (
+              <video src={videoUrl} controls style={styles.thumb} autoPlay loop muted={false} />
+            ) : (
+              <>
+                <img src={thumbSrc} alt="Video Frame Preview" style={styles.thumb} />
+                <div style={styles.playOverlay}>
+                  <div style={styles.playBtn}>
+                    <PlayIcon />
+                  </div>
+                </div>
+              </>
+            )}
+            {!videoUrl && (
+              <div style={styles.gestureChip}>
+                <HandIcon />
+                <span style={styles.chipText}>PREVIEW · FIRST FRAME</span>
               </div>
-            </div>
-            <div style={styles.gestureChip}>
-              <HandIcon />
-              <span style={styles.chipText}>PREVIEW · FRAME ĐẦU</span>
-            </div>
+            )}
           </div>
 
           <div style={styles.videoInfo}>
-            <p style={styles.infoLabel}>Thông tin & thời gian</p>
+            <p style={styles.infoLabel}>Info & Execution Time</p>
             <div style={styles.infoCol}>
-              <span style={styles.infoItem}>Tổng xử lý máy chủ: {duration ?? "—"}</span>
-              <span style={styles.infoItem}>TV1 (features): {ts ? `${ts.features.toFixed(2)}s` : "—"}</span>
-              <span style={styles.infoItem}>TV2 (translate): {ts ? `${ts.translate.toFixed(2)}s` : "—"}</span>
+              <span style={styles.infoItem}>Total Server Processing: {duration ?? "—"}</span>
               <span style={styles.infoItem}>
-                Tải lên (client): {tc != null ? `${tc.uploadMs} ms` : "—"}
+                Client Upload: {tc != null ? `${tc.uploadMs} ms` : "—"}
               </span>
               <span style={styles.infoItem}>
-                Vòng đời request (client): {tc != null ? `${tc.roundTripMs} ms` : "—"}
+                Client Roundtrip: {tc != null ? `${tc.roundTripMs} ms` : "—"}
               </span>
-              <span style={styles.infoItem}>Ngôn ngữ: {language}</span>
+              <span style={styles.infoItem}>Language: {language}</span>
             </div>
             {requestId ? (
               <p style={styles.requestRow}>
@@ -127,7 +132,7 @@ export default function ResultScreen({ result, previewUrl }) {
           <div style={styles.rawSection}>
             <div style={styles.sectionHeader}>
               <QuoteIcon />
-              <span style={styles.sectionLabel}>Văn bản thô (raw)</span>
+              <span style={styles.sectionLabel}>Raw Output</span>
             </div>
             <div style={styles.rawBox}>
               <p style={styles.rawText}>{rawText || "—"}</p>
@@ -137,7 +142,7 @@ export default function ResultScreen({ result, previewUrl }) {
           <div style={styles.refinedSection}>
             <div style={styles.sectionHeader}>
               <SparkleIcon />
-              <span style={{ ...styles.sectionLabel, color: "#00a8cc" }}>Văn bản tinh chỉnh (refined)</span>
+              <span style={{ ...styles.sectionLabel, color: "#00a8cc" }}>Refined Translation</span>
             </div>
             <div style={styles.refinedBox}>
               <div style={styles.refinedGlow} />
@@ -149,7 +154,7 @@ export default function ResultScreen({ result, previewUrl }) {
             <div style={styles.leftActions}>
               <button type="button" style={styles.outlineBtn} onClick={handleCopy}>
                 <CopyIcon />
-                <span>{copied ? "Đã copy!" : "Copy"}</span>
+                <span>{copied ? "Copied!" : "Copy"}</span>
               </button>
               <button type="button" style={styles.outlineBtn} onClick={handleShare}>
                 <ShareIcon />
@@ -157,23 +162,17 @@ export default function ResultScreen({ result, previewUrl }) {
               </button>
               <button type="button" style={styles.outlineBtn} onClick={handleDownloadTxt}>
                 <DownloadIcon />
-                <span>Tải .txt</span>
+                <span>Download .txt</span>
               </button>
             </div>
             <button type="button" style={styles.primaryBtn} onClick={() => navigate("/")}>
               <VideoIcon />
-              <span>Dịch video khác</span>
+              <span>Translate Another</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div style={styles.tipCard}>
-        <TipIcon />
-        <p style={styles.tipText}>
-          <strong>Mẹo:</strong> Dùng Request ID để đối chiếu với log gateway/TV1/TV2 khi báo lỗi.
-        </p>
-      </div>
     </div>
   );
 }

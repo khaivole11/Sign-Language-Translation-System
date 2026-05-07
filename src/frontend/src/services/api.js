@@ -2,18 +2,18 @@ const BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8000";
 
 function friendlyHttpMessage(status, detail) {
   if (status === 429) {
-    return "Quá nhiều yêu cầu — máy chủ đang bận. Thử lại sau vài giây.";
+    return "Too many requests — the server is busy. Try again later.";
   }
   if (status === 503) {
-    return detail || "Dịch vụ AI tạm không phản hồi. Thử lại sau.";
+    return detail || "AI service is temporarily unavailable. Try again later.";
   }
   if (status === 400) {
-    return detail || "Yêu cầu không hợp lệ.";
+    return detail || "Invalid request.";
   }
   if (status >= 500) {
-    return detail || "Lỗi máy chủ. Thử lại sau.";
+    return detail || "Internal server error. Try again later.";
   }
-  return detail || `Lỗi HTTP ${status}`;
+  return detail || `HTTP Error ${status}`;
 }
 
 /**
@@ -51,14 +51,11 @@ export async function translateVideo(file, callbacks = {}) {
         try {
           res = JSON.parse(xhr.responseText);
         } catch {
-          reject(new Error("Phản hồi không phải JSON hợp lệ."));
+          reject(new Error("Response is not valid JSON."));
           return;
         }
 
-        const t = res.time || {};
-        const feat = Number(t.features) || 0;
-        const trans = Number(t.translate) || 0;
-        const serverTotal = feat + trans;
+        const serverTotal = Number(res.time) || 0;
 
         resolve({
           rawText: res.raw ?? "",
@@ -67,12 +64,12 @@ export async function translateVideo(file, callbacks = {}) {
           warnings: Array.isArray(res.warnings) ? res.warnings : [],
           stub: Boolean(res.stub),
           duration: `${serverTotal.toFixed(2)}s`,
-          timeServer: { features: feat, translate: trans, total: serverTotal },
+          timeServer: { total: serverTotal },
           timeClient: {
             uploadMs: Math.round(uploadMs),
             roundTripMs: Math.round(tEnd - t0),
           },
-          language: "Sign → Vietnamese",
+          language: "Sign → English",
           gestures: [],
         });
         return;
@@ -90,9 +87,9 @@ export async function translateVideo(file, callbacks = {}) {
       reject(new Error(friendlyHttpMessage(xhr.status, detail)));
     };
 
-    xhr.onerror = () => reject(new Error("Lỗi mạng — kiểm tra backend đã chạy và CORS."));
+    xhr.onerror = () => reject(new Error("Network error — check backend and CORS."));
 
-    xhr.open("POST", `${BASE_URL}/api/translate-ui`);
+    xhr.open("POST", `${BASE_URL}/api/translate`);
     xhr.send(formData);
   });
 }

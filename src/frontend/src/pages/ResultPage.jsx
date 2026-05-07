@@ -8,11 +8,13 @@ export default function ResultPage() {
   const result = location.state?.result || null;
   const previewUrl = location.state?.previewUrl || null;
 
+  const videoUrl = location.state?.videoUrl || null;
+
   return (
     <div style={styles.page}>
       <Header />
       <main style={styles.main}>
-        <ResultScreen result={result} previewUrl={previewUrl} />
+        <ResultScreen result={result} previewUrl={previewUrl} videoUrl={videoUrl} />
       </main>
       <Footer />
     </div>

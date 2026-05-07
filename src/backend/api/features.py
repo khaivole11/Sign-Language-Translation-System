@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from functools import partial
 from starlette.concurrency import run_in_threadpool
 
-from src.services.feature_ext import (
+from src.backend.services.i3d_extractor import (
     append_tsv_row,
     build_feature_metadata,
     extract_i3d_sequence,
