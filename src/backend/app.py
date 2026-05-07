@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Fix import path để module src/ gọi ngang hàng configs/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from src.backend.config.config import MAX_UPLOAD_MB, services_configured
+from src.backend.core.config import MAX_UPLOAD_MB, services_configured
 from src.backend.services.feature_ext import extract_features
 from src.backend.services.translator import translate
 from src.backend.services.errors import UpstreamServiceError

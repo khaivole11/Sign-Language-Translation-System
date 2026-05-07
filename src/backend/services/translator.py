@@ -6,7 +6,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from src.backend.config.config import API_TRANSLATE_URL, TIMEOUT_SEC
+from src.backend.core.config import API_TRANSLATE_URL, TIMEOUT_SEC
 from src.backend.services.errors import UpstreamServiceError
 
 

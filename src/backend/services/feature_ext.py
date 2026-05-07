@@ -5,7 +5,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from src.backend.config.config import (
+from src.backend.core.config import (
     API_FEATURE_URL,
     FEATURE_FILE_FIELD,
     FEATURE_UPLOAD_NAME,

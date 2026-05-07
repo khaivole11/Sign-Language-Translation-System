@@ -56,7 +56,7 @@ def generate_translation(temp_dir: Path) -> str:
     
     import os
     env = os.environ.copy()
-    base_dir = Path(__file__).resolve().parent.parent.parent
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
     fairseq_dir = base_dir / "fairseq"
     env['PYTHONPATH'] = str(fairseq_dir) + os.pathsep + env.get('PYTHONPATH', '')
 
