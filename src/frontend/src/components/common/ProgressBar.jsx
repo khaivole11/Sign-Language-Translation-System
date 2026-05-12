@@ -1,38 +1,32 @@
-/**
- * ProgressBar — Workflow Progress Track (3 bước)
- * Props:
- *   currentStep: 1 | 2 | 3
- *   progress: number (0–100), chỉ dùng khi step === 2
- */
 export default function ProgressBar({ currentStep = 1, progress = 0 }) {
   const steps = [
-    { label: "BƯỚC 1", name: "Nhận diện Video", icon: <CheckIcon /> },
-    { label: "BƯỚC 2", name: "Tải & trích xuất", icon: <SyncIcon /> },
-    { label: "BƯỚC 3", name: "Dịch & tinh chỉnh", icon: <SparkleIcon /> },
+    { label: "STEP 1", name: "Video ready", icon: <CheckIcon /> },
+    { label: "STEP 2", name: "Upload & extract", icon: <SyncIcon /> },
+    { label: "STEP 3", name: "Sign-to-text", icon: <SparkleIcon /> },
+    { label: "STEP 4", name: "AI agent", icon: <AgentIcon /> },
   ];
 
-  // Tỉ lệ fill của track dựa vào step + progress nội bộ
+  const segment = 100 / (steps.length - 1);
+  const boundedStep = Math.max(1, Math.min(steps.length, currentStep));
+  const boundedProgress = Math.max(0, Math.min(100, progress));
   const trackFill =
-    currentStep === 1 ? 0
-    : currentStep === 2 ? (progress / 100) * 50 + 0 // 0–50%
-    : currentStep === 3 ? 50 + (progress / 100) * 50 // 50–100%
-    : 0;
+    boundedStep === 1
+      ? 0
+      : Math.min(100, (boundedStep - 2) * segment + (boundedProgress / 100) * segment);
 
   return (
     <div style={styles.wrapper}>
-      {/* Track */}
       <div style={styles.track}>
         <div style={{ ...styles.trackFill, width: `${trackFill}%` }} />
       </div>
 
-      {/* Steps */}
       <div style={styles.stepsRow}>
         {steps.map((s, i) => {
           const stepNum = i + 1;
           const done = currentStep > stepNum;
           const active = currentStep === stepNum;
           return (
-            <div key={i} style={styles.stepCol}>
+            <div key={s.label} style={styles.stepCol}>
               <div style={{ ...styles.iconWrap, color: done ? "#00677e" : active ? "#00a8cc" : "#bcc8ce" }}>
                 {s.icon}
               </div>
@@ -57,6 +51,7 @@ function CheckIcon() {
     </svg>
   );
 }
+
 function SyncIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,10 +61,27 @@ function SyncIcon() {
     </svg>
   );
 }
+
 function SparkleIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+function AgentIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v4" />
+      <path d="M12 18v4" />
+      <path d="M4.93 4.93l2.83 2.83" />
+      <path d="M16.24 16.24l2.83 2.83" />
+      <path d="M2 12h4" />
+      <path d="M18 12h4" />
+      <path d="M4.93 19.07l2.83-2.83" />
+      <path d="M16.24 7.76l2.83-2.83" />
     </svg>
   );
 }
@@ -96,13 +108,15 @@ const styles = {
   },
   stepsRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 8,
   },
   stepCol: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: 4,
+    minWidth: 0,
   },
   iconWrap: {
     display: "flex",
@@ -113,12 +127,14 @@ const styles = {
   stepLabel: {
     fontSize: 12,
     fontWeight: 700,
-    letterSpacing: "1px",
+    letterSpacing: 0,
     textTransform: "uppercase",
     transition: "color 0.3s",
   },
   stepName: {
     fontSize: 14,
     transition: "all 0.3s",
+    textAlign: "center",
+    overflowWrap: "anywhere",
   },
 };
