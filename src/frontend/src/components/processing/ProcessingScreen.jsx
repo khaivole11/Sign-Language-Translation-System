@@ -1,25 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ProgressBar from "../common/ProgressBar";
-import { translateVideo } from "../../services/api";
+import { runMultilingualAgent, translateVideo } from "../../services/api";
 import { captureVideoPreviewDataUrl } from "../../utils/videoPreview";
 
-const MESSAGES_UPLOAD = [
-  "Uploading video to server...",
-  "Sending data securely...",
-];
+const MESSAGES = {
+  upload: ["Uploading video to server...", "Sending video data securely..."],
+  video: ["Extracting I3D features...", "Translating signs into text...", "Refining source sentence..."],
+  agent: ["Planning multilingual translation...", "Searching translation tools and models...", "Generating language candidates...", "Checking translation quality..."],
+};
 
-const MESSAGES_SERVER = [
-  "Extracting features (I3D)...",
-  "Translating to text (Fairseq)...",
-  "Refining translation...",
+const AGENT_STEPS = [
+  { key: "plan", label: "Plan", detail: "Define targets, constraints, and quality gates." },
+  { key: "tools", label: "Find tools", detail: "Check Gemini, OpenAI, DeepL, Google Translate, and fallback." },
+  { key: "translate", label: "Translate", detail: "Create candidates for each target language." },
+  { key: "quality", label: "Quality check", detail: "Check meaning, numbers, language signal, and review risk." },
+  { key: "select", label: "Select", detail: "Pick the best candidate for the result screen." },
 ];
 
 export default function ProcessingScreen({ file, fileName }) {
   const [barStep, setBarStep] = useState(2);
   const [barProgress, setBarProgress] = useState(0);
+  const [phase, setPhase] = useState("upload");
   const [msgIdx, setMsgIdx] = useState(0);
-  const [serverPhase, setServerPhase] = useState(false);
+  const [agentStepIdx, setAgentStepIdx] = useState(0);
+  const [sourceText, setSourceText] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const pulseRef = useRef(null);
@@ -34,13 +39,26 @@ export default function ProcessingScreen({ file, fileName }) {
     setError(null);
     setBarStep(2);
     setBarProgress(0);
-    setServerPhase(false);
+    setPhase("upload");
+    setAgentStepIdx(0);
+    setSourceText("");
 
     const clearPulse = () => {
       if (pulseRef.current) {
         clearInterval(pulseRef.current);
         pulseRef.current = null;
       }
+    };
+
+    const startPulse = ({ from, to, intervalMs, onTick }) => {
+      clearPulse();
+      let p = from;
+      setBarProgress(p);
+      pulseRef.current = setInterval(() => {
+        p = Math.min(p + 1, to);
+        setBarProgress(p);
+        onTick?.(p);
+      }, intervalMs);
     };
 
     (async () => {
@@ -52,28 +70,57 @@ export default function ProcessingScreen({ file, fileName }) {
         const result = await translateVideo(file, {
           onUploadProgress: (pct) => {
             if (cancelled) return;
-            setServerPhase(false);
+            setPhase("upload");
             setBarStep(2);
             setBarProgress(pct);
           },
           onProcessingStart: () => {
             if (cancelled) return;
-            setServerPhase(true);
+            setPhase("video");
             setBarStep(3);
-            setBarProgress(48);
-            clearPulse();
-            let p = 48;
-            pulseRef.current = setInterval(() => {
-              p = Math.min(p + 1, 92);
-              setBarProgress(p);
-            }, 450);
+            startPulse({ from: 8, to: 92, intervalMs: 430 });
           },
         });
 
         clearPulse();
         if (cancelled) return;
+
+        const translatedText = result.refinedText || result.rawText || "";
+        setSourceText(translatedText);
+        setPhase("agent");
+        setBarStep(4);
+        setAgentStepIdx(0);
+        startPulse({
+          from: 6,
+          to: 94,
+          intervalMs: 520,
+          onTick: (p) => {
+            const idx = Math.min(AGENT_STEPS.length - 1, Math.floor((p / 100) * AGENT_STEPS.length));
+            setAgentStepIdx(idx);
+          },
+        });
+
+        let multilingual = null;
+        let warnings = [...(result.warnings || [])];
+        try {
+          multilingual = await runMultilingualAgent(translatedText);
+          warnings = [...warnings, ...(multilingual?.warnings || [])];
+        } catch (agentError) {
+          warnings.push(agentError.message || "AI agent failed after sign-to-text translation.");
+        }
+
+        clearPulse();
+        if (cancelled) return;
+
+        setAgentStepIdx(AGENT_STEPS.length);
         setBarProgress(100);
-        navigate("/result", { state: { result, previewUrl, videoUrl } });
+        navigate("/result", {
+          state: {
+            result: { ...result, warnings, multilingual },
+            previewUrl,
+            videoUrl,
+          },
+        });
       } catch (e) {
         clearPulse();
         if (!cancelled) {
@@ -90,18 +137,19 @@ export default function ProcessingScreen({ file, fileName }) {
 
   useEffect(() => {
     setMsgIdx(0);
-  }, [serverPhase]);
+  }, [phase]);
 
   useEffect(() => {
-    const pool = serverPhase ? MESSAGES_SERVER : MESSAGES_UPLOAD;
+    const pool = MESSAGES[phase] || MESSAGES.upload;
     const msgInterval = setInterval(() => {
       setMsgIdx((i) => (i + 1) % pool.length);
-    }, 2800);
+    }, 2600);
     return () => clearInterval(msgInterval);
-  }, [serverPhase]);
+  }, [phase]);
 
-  const messages = serverPhase ? MESSAGES_SERVER : MESSAGES_UPLOAD;
+  const messages = MESSAGES[phase] || MESSAGES.upload;
   const line = messages[msgIdx % messages.length];
+  const phaseLabel = phase === "agent" ? "AI AGENT" : phase === "video" ? "SIGN-TO-TEXT" : "UPLOADING";
 
   return (
     <div style={styles.wrapper}>
@@ -110,7 +158,7 @@ export default function ProcessingScreen({ file, fileName }) {
       </div>
 
       <div style={styles.titleSection}>
-        <h1 style={styles.title}>Processing Video</h1>
+        <h1 style={styles.title}>{phase === "agent" ? "Running AI Agent" : "Processing Video"}</h1>
         <p style={styles.subtitle}>
           {error ? (
             <>
@@ -124,7 +172,7 @@ export default function ProcessingScreen({ file, fileName }) {
               </button>
             </>
           ) : (
-            <>“{fileName ? `${fileName} — ` : ""}{line}”</>
+            <>{fileName ? `${fileName} - ` : ""}{line}</>
           )}
         </p>
       </div>
@@ -141,14 +189,14 @@ export default function ProcessingScreen({ file, fileName }) {
         <div style={styles.pill}>
           <div style={styles.pillDot} />
           <span style={styles.pillText}>
-            {serverPhase ? "PROCESSING" : "UPLOADING"} · {barProgress}%
+            {phaseLabel} - {barProgress}%
           </span>
         </div>
 
         <div style={styles.gestureChip}>
-          <EyeIcon />
+          {phase === "agent" ? <AgentIcon /> : <EyeIcon />}
           <span style={styles.chipText}>
-            {serverPhase ? "I3D / FAIRSEQ" : "UPLOAD"}
+            {phase === "agent" ? "PLAN / TOOLS / QUALITY" : phase === "video" ? "I3D / FAIRSEQ" : "UPLOAD"}
           </span>
         </div>
       </div>
@@ -156,17 +204,41 @@ export default function ProcessingScreen({ file, fileName }) {
       <div style={styles.infoCard}>
         <div style={styles.infoHeader}>
           <AiIcon />
-          <span style={styles.infoTitle}>Monolithic Processing Pipeline</span>
+          <span style={styles.infoTitle}>
+            {phase === "agent" ? "AI Agent Translation Pipeline" : "Sign Language Processing Pipeline"}
+          </span>
         </div>
-        <p style={styles.infoDesc}>
-          After uploading to the server, the system automatically extracts video features and translates them to English. You can verify the <strong>request id</strong> in the results screen for debugging.
-        </p>
-        <div style={styles.dots}>
-          <span style={styles.dot} />
-          <span style={styles.dot} />
-          <span style={styles.dot} />
-        </div>
+        {phase === "agent" ? (
+          <>
+            {sourceText ? <p style={styles.sourceText}>{sourceText}</p> : null}
+            <AgentProgressList activeIndex={agentStepIdx} />
+          </>
+        ) : (
+          <p style={styles.infoDesc}>
+            The system uploads the video, extracts motion features, and translates the sign-language sequence into source text before the AI agent starts multilingual translation.
+          </p>
+        )}
       </div>
+    </div>
+  );
+}
+
+function AgentProgressList({ activeIndex }) {
+  return (
+    <div style={styles.agentList}>
+      {AGENT_STEPS.map((step, index) => {
+        const done = activeIndex > index;
+        const active = activeIndex === index;
+        return (
+          <div key={step.key} style={{ ...styles.agentRow, ...(active ? styles.agentRowActive : {}) }}>
+            <span style={{ ...styles.agentDot, ...(done ? styles.agentDotDone : active ? styles.agentDotActive : {}) }} />
+            <div style={styles.agentCopy}>
+              <span style={styles.agentLabel}>{step.label}</span>
+              <span style={styles.agentDetail}>{step.detail}</span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -192,7 +264,7 @@ function SpinnerRing({ progress }) {
         style={{ transition: "stroke-dashoffset 0.3s ease" }}
       />
       <text x="48" y="53" textAnchor="middle" fontSize="18" fill="#00677e">
-        ✦
+        AI
       </text>
     </svg>
   );
@@ -203,6 +275,18 @@ function EyeIcon() {
     <svg width="18" height="13" viewBox="0 0 24 16" fill="none" stroke="#00677e" strokeWidth="2" strokeLinecap="round">
       <path d="M1 8S5 1 12 1s11 7 11 7-4 7-11 7S1 8 1 8z" />
       <circle cx="12" cy="8" r="3" />
+    </svg>
+  );
+}
+
+function AgentIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00677e" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v4" />
+      <path d="M12 18v4" />
+      <path d="M2 12h4" />
+      <path d="M18 12h4" />
     </svg>
   );
 }
@@ -223,28 +307,27 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 48,
-    padding: "80px 24px",
+    gap: 40,
+    padding: "72px 24px",
     fontFamily: "'Manrope', sans-serif",
     maxWidth: 960,
     margin: "0 auto",
     width: "100%",
     boxSizing: "border-box",
   },
-  trackSection: { width: "100%", maxWidth: 768 },
+  trackSection: { width: "100%", maxWidth: 820 },
   titleSection: { textAlign: "center" },
   title: {
     fontSize: 40,
     fontWeight: 800,
     color: "#171c1f",
     margin: "0 0 12px",
-    letterSpacing: "-1px",
+    letterSpacing: 0,
   },
   subtitle: {
     fontSize: 18,
     color: "#3d494d",
     margin: 0,
-    fontStyle: "italic",
     transition: "opacity 0.3s",
     display: "flex",
     flexDirection: "column",
@@ -320,7 +403,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
     color: "#171c1f",
-    letterSpacing: "0.5px",
+    letterSpacing: 0,
   },
   gestureChip: {
     position: "absolute",
@@ -340,18 +423,17 @@ const styles = {
     fontSize: 12,
     fontWeight: 700,
     color: "#00677e",
-    letterSpacing: "0.8px",
+    letterSpacing: 0,
     textTransform: "uppercase",
   },
   infoCard: {
     width: "100%",
-    maxWidth: 576,
+    maxWidth: 680,
     background: "#ffffff",
     borderRadius: 12,
-    padding: "32px",
+    padding: "28px",
     boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
     border: "1px solid #e2eaed",
-    textAlign: "center",
     boxSizing: "border-box",
   },
   infoHeader: {
@@ -362,27 +444,69 @@ const styles = {
     marginBottom: 16,
   },
   infoTitle: {
-    fontSize: 18,
-    fontWeight: 700,
+    fontSize: 15,
+    fontWeight: 800,
     color: "#171c1f",
   },
   infoDesc: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#3d494d",
-    lineHeight: "26px",
+    lineHeight: "23px",
     margin: 0,
+    textAlign: "center",
   },
-  dots: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 20,
+  sourceText: {
+    margin: "0 0 16px",
+    padding: "12px 14px",
+    borderRadius: 8,
+    background: "#f5fafd",
+    border: "1px solid #e2eaed",
+    color: "#171c1f",
+    fontSize: 14,
+    lineHeight: "22px",
+    overflowWrap: "anywhere",
   },
-  dot: {
-    display: "inline-block",
-    width: 6,
-    height: 6,
+  agentList: {
+    display: "grid",
+    gap: 10,
+  },
+  agentRow: {
+    display: "grid",
+    gridTemplateColumns: "14px 1fr",
+    gap: 10,
+    alignItems: "start",
+    padding: "10px 12px",
+    borderRadius: 8,
+    border: "1px solid #e2eaed",
+    background: "#ffffff",
+  },
+  agentRowActive: {
+    borderColor: "#bfe9fa",
+    background: "#f0fbff",
+  },
+  agentDot: {
+    width: 9,
+    height: 9,
     borderRadius: "50%",
     background: "#bcc8ce",
+    marginTop: 5,
+  },
+  agentDotActive: { background: "#00a8cc" },
+  agentDotDone: { background: "#10b981" },
+  agentCopy: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minWidth: 0,
+  },
+  agentLabel: {
+    fontSize: 14,
+    fontWeight: 800,
+    color: "#171c1f",
+  },
+  agentDetail: {
+    fontSize: 12,
+    color: "#607077",
+    lineHeight: "18px",
   },
 };

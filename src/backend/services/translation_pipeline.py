@@ -6,8 +6,9 @@ from pathlib import Path
 from configs.config import settings
 from src.backend.services.i3d_extractor import extract_i3d_sequence
 from src.backend.services.fairseq_runner import build_dummy_tsv, generate_translation, parse_best_translation
+from src.backend.services.multilingual_agent import run_multilingual_agent
 
-def run_translation_pipeline(file_name: str, file_stream, i3d_model) -> dict:
+def run_translation_pipeline(file_name: str, file_stream, i3d_model, include_multilingual: bool = True) -> dict:
     """
     Quy trình: MP4 -> I3D Feature (.npy) -> Fairseq Inference -> Phản hồi text.
     """
@@ -46,6 +47,19 @@ def run_translation_pipeline(file_name: str, file_stream, i3d_model) -> dict:
         temp_tsv_dir, _ = build_dummy_tsv(npy_path)
         raw_stdout = generate_translation(temp_tsv_dir)
         final_text = parse_best_translation(raw_stdout)
+
+        agent_warnings = []
+        multilingual_result = None
+        if include_multilingual:
+            try:
+                multilingual_result = run_multilingual_agent(
+                    final_text,
+                    source_language="en",
+                    source_sign_language="ASL",
+                )
+                agent_warnings = multilingual_result.get("warnings", [])
+            except Exception as agent_error:
+                agent_warnings = [f"Multilingual agent failed: {agent_error}"]
         
         elapsed = time.time() - start_time
         print(f"Translation complete: '{final_text}' ({elapsed:.2f}s)")
@@ -56,7 +70,9 @@ def run_translation_pipeline(file_name: str, file_stream, i3d_model) -> dict:
             "raw": "",
             "refined": final_text if final_text else "Cannot translate.",
             "time": elapsed,
-            "error_message": None
+            "error_message": None,
+            "warnings": agent_warnings,
+            "multilingual": multilingual_result
         }
 
     except Exception as e:

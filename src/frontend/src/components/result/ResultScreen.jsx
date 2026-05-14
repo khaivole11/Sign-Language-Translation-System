@@ -18,6 +18,15 @@ function buildExportText(result) {
     lines.push("", "warnings:");
     result.warnings.forEach((w) => lines.push(`- ${w}`));
   }
+  if (result?.multilingual?.translations?.length) {
+    lines.push("", "multilingual_translations:");
+    result.multilingual.translations.forEach((item) => {
+      lines.push(
+        `- ${item.languageName || item.languageCode}: ${item.text || "[unavailable]"} ` +
+          `(provider=${item.provider || "unknown"}, quality=${Math.round((item.qualityScore || 0) * 100)}%, status=${item.status || "ok"})`
+      );
+    });
+  }
   return lines.join("\n");
 }
 
@@ -32,8 +41,11 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
   const requestId = result?.requestId || "";
   const warnings = result?.warnings || [];
   const stub = result?.stub;
-  const ts = result?.timeServer;
   const tc = result?.timeClient;
+  const multilingual = result?.multilingual || null;
+  const multilingualTranslations = multilingual?.translations || [];
+  const agentSteps = multilingual?.steps || [];
+  const agentTools = multilingual?.tools || [];
 
   const thumbSrc = previewUrl || PLACEHOLDER_THUMB;
 
@@ -150,6 +162,82 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
             </div>
           </div>
 
+          {multilingualTranslations.length > 0 ? (
+            <div style={styles.agentSection}>
+              <div style={styles.sectionHeader}>
+                <GlobeIcon />
+                <span style={{ ...styles.sectionLabel, color: "#125e6d" }}>Multilingual Agent</span>
+                {multilingual?.stub ? <span style={styles.agentMode}>Preview</span> : null}
+              </div>
+
+              <div style={styles.translationList}>
+                {multilingualTranslations.map((item) => (
+                  <div key={item.languageCode || item.languageName} style={styles.translationRow}>
+                    <div style={styles.translationMain}>
+                      <div style={styles.translationHeader}>
+                        <span style={styles.languageName}>{item.languageName}</span>
+                        <span style={styles.languageCode}>{(item.languageCode || "").toUpperCase()}</span>
+                        <span style={{ ...styles.statusPill, ...getStatusStyle(item.status) }}>
+                          {formatStatus(item.status)}
+                        </span>
+                      </div>
+                      <p style={item.text ? styles.translationText : styles.translationEmpty}>
+                        {item.text || "Translation provider is not configured for this target."}
+                      </p>
+                      {item.notes?.length ? (
+                        <p style={styles.translationNote}>{item.notes.join(" ")}</p>
+                      ) : null}
+                    </div>
+
+                    <div style={styles.qualityCol}>
+                      <span style={styles.qualityLabel}>Quality</span>
+                      <span style={styles.qualityValue}>{formatQuality(item.qualityScore)}</span>
+                      <div style={styles.scoreTrack}>
+                        <span
+                          style={{
+                            ...styles.scoreFill,
+                            width: `${Math.max(0, Math.min(100, Math.round((item.qualityScore || 0) * 100)))}%`,
+                          }}
+                        />
+                      </div>
+                      <span style={styles.providerLabel}>{item.provider || "unknown"}</span>
+                      {item.candidateCount ? (
+                        <span style={styles.providerLabel}>{item.candidateCount} candidate(s)</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {agentTools.length > 0 ? (
+                <div style={styles.agentTools}>
+                  {agentTools.map((tool) => (
+                    <span
+                      key={tool.name}
+                      style={{
+                        ...styles.agentTool,
+                        ...(tool.configured ? styles.agentToolReady : styles.agentToolOff),
+                      }}
+                    >
+                      {tool.name.replaceAll("_", " ")}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {agentSteps.length > 0 ? (
+                <div style={styles.agentSteps}>
+                  {agentSteps.map((step, index) => (
+                    <span key={`${step.name}-${index}`} style={styles.agentStep}>
+                      <span style={{ ...styles.stepDot, ...getStatusDotStyle(step.status) }} />
+                      {step.name.replaceAll("_", " ")}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div style={styles.actions}>
             <div style={styles.leftActions}>
               <button type="button" style={styles.outlineBtn} onClick={handleCopy}>
@@ -174,6 +262,44 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
       </div>
 
     </div>
+  );
+}
+
+function formatQuality(score) {
+  return `${Math.round((score || 0) * 100)}%`;
+}
+
+function formatStatus(status) {
+  if (status === "needs_review") return "Needs review";
+  if (status === "unavailable") return "Unavailable";
+  return "OK";
+}
+
+function getStatusStyle(status) {
+  if (status === "unavailable") {
+    return { background: "#f3f4f6", color: "#4b5563", borderColor: "#d1d5db" };
+  }
+  if (status === "needs_review") {
+    return { background: "#fff7ed", color: "#9a3412", borderColor: "#fdba74" };
+  }
+  return { background: "#ecfdf5", color: "#047857", borderColor: "#a7f3d0" };
+}
+
+function getStatusDotStyle(status) {
+  if (status === "failed" || status === "needs_configuration") return { background: "#f97316" };
+  if (status === "partial") return { background: "#f59e0b" };
+  if (status === "skipped") return { background: "#9ca3af" };
+  return { background: "#10b981" };
+}
+
+function GlobeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#125e6d" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 0 20" />
+      <path d="M12 2a15.3 15.3 0 0 0 0 20" />
+    </svg>
   );
 }
 
@@ -241,15 +367,6 @@ function VideoIcon() {
     </svg>
   );
 }
-function TipIcon() {
-  return (
-    <svg width="15" height="20" viewBox="0 0 24 24" fill="none" stroke="#c07c00" strokeWidth="2" strokeLinecap="round">
-      <line x1="12" y1="20" x2="12" y2="20.01" />
-      <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26A7 7 0 0 1 12 2z" />
-    </svg>
-  );
-}
-
 const styles = {
   wrapper: {
     display: "flex",
@@ -269,7 +386,7 @@ const styles = {
     fontWeight: 800,
     color: "#171c1f",
     margin: "0 0 12px",
-    letterSpacing: "-1px",
+    letterSpacing: 0,
   },
   titleUnderline: {
     width: 96,
@@ -350,7 +467,7 @@ const styles = {
     background: "rgba(0,103,126,0.85)",
     backdropFilter: "blur(4px)",
   },
-  chipText: { fontSize: 12, fontWeight: 700, color: "white", letterSpacing: "0.5px" },
+  chipText: { fontSize: 12, fontWeight: 700, color: "white", letterSpacing: 0 },
   videoInfo: {
     background: "#f5fafd",
     border: "1px solid #e2eaed",
@@ -361,14 +478,14 @@ const styles = {
     fontSize: 11,
     fontWeight: 700,
     color: "#7a9099",
-    letterSpacing: "1px",
+    letterSpacing: 0,
     textTransform: "uppercase",
     margin: "0 0 10px",
   },
   infoCol: { display: "flex", flexDirection: "column", gap: 6 },
   infoItem: { fontSize: 14, fontWeight: 500, color: "#3d494d" },
   requestRow: { margin: "14px 0 0", display: "flex", flexDirection: "column", gap: 6 },
-  reqLabel: { fontSize: 11, fontWeight: 700, color: "#7a9099", letterSpacing: "0.5px" },
+  reqLabel: { fontSize: 11, fontWeight: 700, color: "#7a9099", letterSpacing: 0 },
   reqCode: {
     fontSize: 12,
     wordBreak: "break-all",
@@ -391,7 +508,7 @@ const styles = {
     boxSizing: "border-box",
   },
   sectionHeader: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 },
-  sectionLabel: { fontSize: 12, fontWeight: 700, color: "#7a9099", letterSpacing: "1px", textTransform: "uppercase" },
+  sectionLabel: { fontSize: 12, fontWeight: 700, color: "#7a9099", letterSpacing: 0, textTransform: "uppercase" },
   rawBox: {
     background: "#f5fafd",
     border: "1px solid #e2eaed",
@@ -428,6 +545,165 @@ const styles = {
     margin: 0,
     position: "relative",
     zIndex: 1,
+  },
+  agentSection: {
+    borderTop: "1px solid #e2eaed",
+    paddingTop: 24,
+  },
+  agentMode: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#6b4e00",
+    background: "#fef3c7",
+    border: "1px solid #fde68a",
+    borderRadius: 9999,
+    padding: "3px 9px",
+  },
+  translationList: {
+    display: "flex",
+    flexDirection: "column",
+    borderTop: "1px solid #e2eaed",
+  },
+  translationRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 116px",
+    gap: 18,
+    padding: "18px 0",
+    borderBottom: "1px solid #e2eaed",
+    alignItems: "start",
+  },
+  translationMain: { minWidth: 0 },
+  translationHeader: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  languageName: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: "#171c1f",
+  },
+  languageCode: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#607077",
+    background: "#eef7fa",
+    borderRadius: 9999,
+    padding: "3px 8px",
+  },
+  statusPill: {
+    fontSize: 11,
+    fontWeight: 800,
+    border: "1px solid",
+    borderRadius: 9999,
+    padding: "3px 8px",
+  },
+  translationText: {
+    fontSize: 16,
+    color: "#1f2933",
+    lineHeight: "26px",
+    margin: 0,
+    overflowWrap: "anywhere",
+  },
+  translationEmpty: {
+    fontSize: 15,
+    color: "#6b7280",
+    lineHeight: "24px",
+    margin: 0,
+    fontStyle: "italic",
+  },
+  translationNote: {
+    fontSize: 12,
+    color: "#7a5000",
+    lineHeight: "19px",
+    margin: "8px 0 0",
+  },
+  qualityCol: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 5,
+    minWidth: 0,
+  },
+  qualityLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#7a9099",
+    textTransform: "uppercase",
+  },
+  qualityValue: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#125e6d",
+  },
+  scoreTrack: {
+    width: "100%",
+    height: 6,
+    borderRadius: 9999,
+    background: "#e5edf0",
+    overflow: "hidden",
+  },
+  scoreFill: {
+    display: "block",
+    height: "100%",
+    borderRadius: 9999,
+    background: "#00a8cc",
+  },
+  providerLabel: {
+    maxWidth: "100%",
+    fontSize: 11,
+    color: "#607077",
+    overflowWrap: "anywhere",
+    textAlign: "right",
+  },
+  agentTools: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+  },
+  agentTool: {
+    border: "1px solid",
+    borderRadius: 9999,
+    padding: "6px 10px",
+    fontSize: 12,
+    textTransform: "capitalize",
+  },
+  agentToolReady: {
+    background: "#ecfdf5",
+    borderColor: "#a7f3d0",
+    color: "#047857",
+  },
+  agentToolOff: {
+    background: "#f8fafc",
+    borderColor: "#d8e2e8",
+    color: "#64748b",
+  },
+  agentSteps: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+  },
+  agentStep: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    color: "#52636b",
+    background: "#f5fafd",
+    border: "1px solid #e2eaed",
+    borderRadius: 9999,
+    padding: "6px 10px",
+    textTransform: "capitalize",
+  },
+  stepDot: {
+    width: 7,
+    height: 7,
+    borderRadius: "50%",
+    flex: "0 0 auto",
   },
   actions: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
   leftActions: { display: "flex", flexWrap: "wrap", gap: 12 },

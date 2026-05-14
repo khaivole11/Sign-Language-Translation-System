@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.backend.core.config import MAX_UPLOAD_MB, services_configured
 from src.backend.services.feature_ext import extract_features
 from src.backend.services.translator import translate
+from src.backend.services.multilingual_agent import run_multilingual_agent
 from src.backend.services.errors import UpstreamServiceError
 from src.backend.utils.timer import Timer
 
@@ -70,6 +71,12 @@ async def translate_ui(file: UploadFile = File(...)):
         timer.stop("translate")
 
         warnings = list(result.get("warnings") or [])
+        multilingual = run_multilingual_agent(
+            result.get("refined", ""),
+            source_language="en",
+            source_sign_language="ASL",
+        )
+        warnings.extend(multilingual.get("warnings") or [])
         stub = bool(result.get("_stub")) or not services_configured()
 
         payload = {
@@ -79,6 +86,7 @@ async def translate_ui(file: UploadFile = File(...)):
             "time": timer.get(),
             "warnings": warnings,
             "stub": stub,
+            "multilingual": multilingual,
         }
         return payload
 
