@@ -1,0 +1,10 @@
+node_modules
+src/frontend/node_modules
+venv
+__pycache__
+*.pyc
+models
+data
+results
+.git
+.DS_Store

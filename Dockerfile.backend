@@ -1,0 +1,33 @@
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3.10-venv \
+    python3.10-dev \
+    python3-pip \
+    build-essential \
+    git \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3.10 /usr/local/bin/python \
+    && ln -s /usr/bin/pip3 /usr/local/bin/pip
+
+WORKDIR /app
+RUN pip install --upgrade pip
+
+COPY requirements.txt .
+COPY src/backend/requirements.txt ./src/backend/
+
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r src/backend/requirements.txt
+
+COPY . .
+
+RUN pip install --editable ./fairseq
+
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "src.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
