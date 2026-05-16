@@ -1,6 +1,9 @@
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y \
     python3.10 \
@@ -26,9 +29,12 @@ RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pyt
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r src/backend/requirements.txt
 
-COPY . .
+COPY fairseq ./fairseq
+RUN pip install --no-cache-dir --no-build-isolation --editable ./fairseq
 
-RUN pip install --no-build-isolation --editable ./fairseq
+COPY configs ./configs
+COPY src ./src
+COPY docs ./docs
 
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "src.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

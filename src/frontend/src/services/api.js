@@ -97,6 +97,7 @@ export async function translateVideo(file, callbacks = {}) {
           rawText: res.raw ?? "",
           refinedText: res.refined ?? "",
           requestId: res.request_id ?? "",
+          feedbackReady: Boolean(res.feedback_ready),
           warnings: Array.isArray(res.warnings) ? res.warnings : [],
           stub: Boolean(res.stub),
           multilingual: normalizeMultilingualAgent(res.multilingual),
@@ -162,4 +163,26 @@ export async function runMultilingualAgent(sourceText, options = {}) {
   }
 
   return normalizeMultilingualAgent(body);
+}
+
+export async function submitTranslationFeedback(payload) {
+  const res = await fetch(`${BASE_URL}/api/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    const detail = body?.detail;
+    throw new Error(friendlyHttpMessage(res.status, typeof detail === "string" ? detail : ""));
+  }
+
+  return body;
 }

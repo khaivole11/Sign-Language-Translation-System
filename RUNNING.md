@@ -38,6 +38,12 @@ GOOGLE_TRANSLATE_API_KEY=
 
 MULTILINGUAL_QUALITY_THRESHOLD=0.72
 MULTILINGUAL_BACK_TRANSLATION_ENABLED=true
+
+FEEDBACK_STORAGE_MODE=auto
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_FEEDBACK_TABLE=feedback_samples
+SUPABASE_STORAGE_BUCKET=feedback-features
 ```
 Sau đó chạy 2 file mock_tv1.py và mock_tv2.py
 
@@ -102,3 +108,32 @@ TEMP_DATA_DIR="D:/Sign-Language-Translation-System/data"
 ```powershell
  install --editable ./fairseq
 ```
+
+### SQL editor create table
+```powershell
+create table if not exists public.feedback_samples (
+  id uuid primary key,
+  request_id text not null,
+  original_filename text,
+  npy_path text not null,
+  raw_translation text,
+  refined_translation text,
+  user_label text not null,
+  rating integer check (rating is null or rating between 1 and 5),
+  comment text,
+  model_version text,
+  review_status text not null default 'pending',
+  used_for_training boolean not null default false,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists feedback_samples_request_id_idx
+  on public.feedback_samples (request_id);
+
+create index if not exists feedback_samples_review_status_idx
+  on public.feedback_samples (review_status, created_at desc);
+
+create index if not exists feedback_samples_training_idx
+  on public.feedback_samples (used_for_training, review_status, created_at desc);
+  ```

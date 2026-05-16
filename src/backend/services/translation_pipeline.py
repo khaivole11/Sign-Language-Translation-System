@@ -7,6 +7,7 @@ from configs.config import settings
 from src.backend.services.i3d_extractor import extract_i3d_sequence
 from src.backend.services.fairseq_runner import build_dummy_tsv, generate_translation, parse_best_translation
 from src.backend.services.multilingual_agent import run_multilingual_agent
+from src.backend.services.feedback_store import persist_feature_artifact
 
 def run_translation_pipeline(file_name: str, file_stream, i3d_model, include_multilingual: bool = True) -> dict:
     """
@@ -43,6 +44,9 @@ def run_translation_pipeline(file_name: str, file_stream, i3d_model, include_mul
             raise Exception("Extracting features failed, no NPY found.")
 
         # Bước 3: Đưa vào Fairseq để dịch Inference
+        # Keep feature artifact before temp cleanup for feedback labels.
+        feedback_feature_path = persist_feature_artifact(request_id, npy_path)
+
         print(f"[ID: {request_id}] Translating to text...")
         temp_tsv_dir, _ = build_dummy_tsv(npy_path)
         raw_stdout = generate_translation(temp_tsv_dir)
@@ -72,7 +76,8 @@ def run_translation_pipeline(file_name: str, file_stream, i3d_model, include_mul
             "time": elapsed,
             "error_message": None,
             "warnings": agent_warnings,
-            "multilingual": multilingual_result
+            "multilingual": multilingual_result,
+            "feedback_ready": bool(feedback_feature_path),
         }
 
     except Exception as e:
@@ -84,7 +89,8 @@ def run_translation_pipeline(file_name: str, file_stream, i3d_model, include_mul
             "raw": "",
             "refined": "",
             "time": 0.0,
-            "error_message": str(e)
+            "error_message": str(e),
+            "feedback_ready": False,
         }
         
     finally:

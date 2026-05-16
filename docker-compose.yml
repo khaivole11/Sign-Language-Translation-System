@@ -1,35 +1,45 @@
-version: '3.8'
-
 services:
   backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./configs/.env
+        required: false
+      - path: ./src/backend/.env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      MODEL_CHECKPOINT_PATH: ${MODEL_CHECKPOINT_PATH:-/app/models/fairseq/baseline_6_3_dp03_wd/ckpts/checkpoint_best.pt}
+      VOCAB_MODEL_PATH: ${VOCAB_MODEL_PATH:-/app/models/vocab/cvpr23.train.how2sign.unigram7000_lowercased.model}
+      TEMP_DATA_DIR: /app/data
     volumes:
-      - ./models:/app/models
+      - ./models:/app/models:ro
       - ./data:/app/data
       - ./configs:/app/configs
-    environment:
-      - HOST=0.0.0.0
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "3000:3000"
-    stdin_open: true
-    tty: true
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:8000}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+    restart: unless-stopped

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Dict, List, Optional
 
 class AgentStep(BaseModel):
@@ -47,3 +47,33 @@ class InferenceResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     stub: bool = False
     multilingual: Optional[MultilingualAgentResponse] = None
+    feedback_ready: bool = False
+
+class FeedbackCreateRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    request_id: str = Field(..., min_length=8, max_length=128)
+    original_filename: str = Field(default="", max_length=512)
+    raw_translation: str = Field(default="", max_length=8000)
+    refined_translation: str = Field(default="", max_length=8000)
+    user_label: str = Field(..., min_length=1, max_length=8000)
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    comment: str = Field(default="", max_length=4000)
+    model_version: str = Field(default="", max_length=256)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class FeedbackResponse(BaseModel):
+    success: bool
+    id: str
+    request_id: str
+    storage_backend: str
+    review_status: str = "pending"
+    npy_path: str = ""
+    message: str = "Feedback saved."
+    warnings: List[str] = Field(default_factory=list)
+
+class FeedbackListResponse(BaseModel):
+    success: bool = True
+    storage_backend: str
+    count: int
+    items: List[Dict[str, Any]] = Field(default_factory=list)
