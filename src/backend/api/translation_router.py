@@ -1,5 +1,15 @@
+from typing import Optional
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
-from src.backend.schemas.response import InferenceResponse, MultilingualAgentRequest, MultilingualAgentResponse
+from src.backend.schemas.response import (
+    FeedbackCreateRequest,
+    FeedbackListResponse,
+    FeedbackResponse,
+    InferenceResponse,
+    MultilingualAgentRequest,
+    MultilingualAgentResponse,
+)
+from src.backend.services.feedback_store import FeedbackStoreError, feedback_store
 from src.backend.services.translation_pipeline import run_translation_pipeline
 from src.backend.services.multilingual_agent import run_multilingual_agent
 
@@ -46,4 +56,40 @@ async def multilingual_agent_endpoint(payload: MultilingualAgentRequest):
             source_sign_language=payload.source_sign_language,
             target_languages=payload.target_languages or None,
         )
+    )
+
+
+@router.post("/api/feedback", response_model=FeedbackResponse)
+async def submit_translation_feedback(payload: FeedbackCreateRequest):
+    """
+    Save user-corrected translation text as a continual-learning label.
+    The related .npy feature file is resolved by request_id.
+    """
+    if not payload.user_label.strip():
+        raise HTTPException(status_code=400, detail="user_label is required.")
+
+    try:
+        return FeedbackResponse(**feedback_store.save(payload))
+    except FeedbackStoreError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/api/feedback", response_model=FeedbackListResponse)
+async def list_translation_feedback(
+    review_status: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+):
+    """
+    List captured feedback rows for review/export tooling.
+    """
+    try:
+        items = feedback_store.list(review_status=review_status, limit=limit)
+        backend = feedback_store.backend_name
+    except FeedbackStoreError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return FeedbackListResponse(
+        storage_backend=backend,
+        count=len(items),
+        items=items,
     )

@@ -1,5 +1,7 @@
 *.pyc
 __pycache__/
+node_modules/
+src/frontend/build/
 *.out
 *.log
 *.pt
@@ -7,3 +9,4 @@ venv/
 *.env
 *.pth.tar
 data/infer_*
+data/feedback/

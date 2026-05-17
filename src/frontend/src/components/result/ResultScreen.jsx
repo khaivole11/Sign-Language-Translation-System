@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { submitTranslationFeedback } from "../../services/api";
 
 const PLACEHOLDER_THUMB =
   "https://images.unsplash.com/photo-1560185007-5f0bb1866cab?w=500&q=80";
@@ -33,12 +34,19 @@ function buildExportText(result) {
 export default function ResultScreen({ result, previewUrl, videoUrl }) {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [feedbackLabel, setFeedbackLabel] = useState(() => result?.refinedText ?? "");
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackState, setFeedbackState] = useState("idle");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const rawText = result?.rawText ?? "";
   const refinedText = result?.refinedText ?? "";
   const duration = result?.duration;
   const language = result?.language || "Sign → English";
   const requestId = result?.requestId || "";
+  const originalFileName = result?.originalFileName || "";
+  const feedbackReady = Boolean(result?.feedbackReady);
   const warnings = result?.warnings || [];
   const stub = result?.stub;
   const tc = result?.timeClient;
@@ -48,6 +56,10 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
   const agentTools = multilingual?.tools || [];
 
   const thumbSrc = previewUrl || PLACEHOLDER_THUMB;
+
+  useEffect(() => {
+    setFeedbackLabel(refinedText);
+  }, [refinedText]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(refinedText);
@@ -68,6 +80,46 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
     a.download = `translate-${requestId.slice(0, 8) || "result"}.txt`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const handleFeedbackSubmit = async (event) => {
+    event.preventDefault();
+    const label = feedbackLabel.trim();
+    if (!requestId) {
+      setFeedbackState("error");
+      setFeedbackMessage("Missing request id for this translation.");
+      return;
+    }
+    if (!label) {
+      setFeedbackState("error");
+      setFeedbackMessage("Please enter the corrected translation before submitting.");
+      return;
+    }
+
+    setFeedbackState("saving");
+    setFeedbackMessage("");
+    try {
+      const saved = await submitTranslationFeedback({
+        request_id: requestId,
+        original_filename: originalFileName,
+        raw_translation: rawText,
+        refined_translation: refinedText,
+        user_label: label,
+        rating: feedbackRating || null,
+        comment: feedbackComment.trim(),
+        metadata: {
+          language,
+          feedback_ready: feedbackReady,
+          multilingual_targets: multilingual?.targetLanguages || [],
+        },
+      });
+      const warningText = saved?.warnings?.length ? ` ${saved.warnings.join(" ")}` : "";
+      setFeedbackState("saved");
+      setFeedbackMessage(`Saved for review.${warningText}`);
+    } catch (error) {
+      setFeedbackState("error");
+      setFeedbackMessage(error.message || "Could not save feedback.");
+    }
   };
 
   return (
@@ -161,6 +213,72 @@ export default function ResultScreen({ result, previewUrl, videoUrl }) {
               <p style={styles.refinedText}>{refinedText || "—"}</p>
             </div>
           </div>
+
+          <form style={styles.feedbackSection} onSubmit={handleFeedbackSubmit}>
+            <div style={styles.sectionHeader}>
+              <FeedbackIcon />
+              <span style={{ ...styles.sectionLabel, color: "#125e6d" }}>Feedback</span>
+              {feedbackReady ? <span style={styles.feedbackReady}>NPY ready</span> : null}
+            </div>
+            <p style={styles.feedbackPrompt}>
+              Is this translation good enough? You can improve the training label for your video below.
+            </p>
+            <textarea
+              value={feedbackLabel}
+              onChange={(event) => setFeedbackLabel(event.target.value)}
+              placeholder="Enter the corrected translation for this video"
+              style={styles.feedbackTextarea}
+              rows={4}
+            />
+            <div style={styles.feedbackMetaRow}>
+              <div style={styles.ratingGroup} aria-label="Translation quality rating">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFeedbackRating(value)}
+                    style={{
+                      ...styles.ratingBtn,
+                      ...(feedbackRating === value ? styles.ratingBtnActive : {}),
+                    }}
+                    aria-pressed={feedbackRating === value}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={feedbackComment}
+                onChange={(event) => setFeedbackComment(event.target.value)}
+                placeholder="Optional note"
+                style={styles.feedbackInput}
+              />
+            </div>
+            <div style={styles.feedbackActions}>
+              <button
+                type="submit"
+                style={{
+                  ...styles.feedbackSubmit,
+                  ...(feedbackState === "saving" ? styles.feedbackSubmitDisabled : {}),
+                }}
+                disabled={feedbackState === "saving"}
+              >
+                <SaveIcon />
+                <span>{feedbackState === "saving" ? "Saving..." : "Send feedback"}</span>
+              </button>
+              {feedbackMessage ? (
+                <span
+                  style={{
+                    ...styles.feedbackStatus,
+                    ...(feedbackState === "error" ? styles.feedbackStatusError : styles.feedbackStatusSaved),
+                  }}
+                >
+                  {feedbackMessage}
+                </span>
+              ) : null}
+            </div>
+          </form>
 
           {multilingualTranslations.length > 0 ? (
             <div style={styles.agentSection}>
@@ -367,6 +485,24 @@ function VideoIcon() {
     </svg>
   );
 }
+function FeedbackIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#125e6d" strokeWidth="2" strokeLinecap="round">
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
+    </svg>
+  );
+}
+function SaveIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <path d="M17 21v-8H7v8" />
+      <path d="M7 3v5h8" />
+    </svg>
+  );
+}
 const styles = {
   wrapper: {
     display: "flex",
@@ -545,6 +681,115 @@ const styles = {
     margin: 0,
     position: "relative",
     zIndex: 1,
+  },
+  feedbackSection: {
+    borderTop: "1px solid #e2eaed",
+    paddingTop: 24,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  feedbackReady: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#047857",
+    background: "#ecfdf5",
+    border: "1px solid #a7f3d0",
+    borderRadius: 9999,
+    padding: "3px 9px",
+  },
+  feedbackPrompt: {
+    fontSize: 14,
+    color: "#52636b",
+    lineHeight: "22px",
+    margin: 0,
+  },
+  feedbackTextarea: {
+    width: "100%",
+    minHeight: 112,
+    resize: "vertical",
+    boxSizing: "border-box",
+    border: "1.5px solid #d8e2e8",
+    borderRadius: 8,
+    padding: "14px 16px",
+    fontSize: 15,
+    lineHeight: "24px",
+    color: "#171c1f",
+    fontFamily: "'Manrope', sans-serif",
+    background: "#ffffff",
+  },
+  feedbackMetaRow: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    gap: 12,
+    alignItems: "center",
+  },
+  ratingGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  ratingBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1.5px solid #d8e2e8",
+    background: "#ffffff",
+    color: "#52636b",
+    fontSize: 14,
+    fontWeight: 800,
+    cursor: "pointer",
+    fontFamily: "'Manrope', sans-serif",
+  },
+  ratingBtnActive: {
+    background: "#00677e",
+    borderColor: "#00677e",
+    color: "#ffffff",
+  },
+  feedbackInput: {
+    minWidth: 0,
+    border: "1.5px solid #d8e2e8",
+    borderRadius: 8,
+    padding: "10px 12px",
+    fontSize: 14,
+    color: "#171c1f",
+    fontFamily: "'Manrope', sans-serif",
+  },
+  feedbackActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 12,
+  },
+  feedbackSubmit: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "12px 18px",
+    borderRadius: 9999,
+    border: "none",
+    background: "#00677e",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 800,
+    fontFamily: "'Manrope', sans-serif",
+  },
+  feedbackSubmitDisabled: {
+    opacity: 0.7,
+    cursor: "wait",
+  },
+  feedbackStatus: {
+    minWidth: 0,
+    fontSize: 13,
+    lineHeight: "20px",
+    overflowWrap: "anywhere",
+  },
+  feedbackStatusSaved: {
+    color: "#047857",
+  },
+  feedbackStatusError: {
+    color: "#b91c1c",
   },
   agentSection: {
     borderTop: "1px solid #e2eaed",

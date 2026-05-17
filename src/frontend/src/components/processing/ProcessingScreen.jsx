@@ -116,7 +116,7 @@ export default function ProcessingScreen({ file, fileName }) {
         setBarProgress(100);
         navigate("/result", {
           state: {
-            result: { ...result, warnings, multilingual },
+            result: { ...result, warnings, multilingual, originalFileName: fileName },
             previewUrl,
             videoUrl,
           },
@@ -133,7 +133,7 @@ export default function ProcessingScreen({ file, fileName }) {
       cancelled = true;
       clearPulse();
     };
-  }, [file, navigate]);
+  }, [file, fileName, navigate]);
 
   useEffect(() => {
     setMsgIdx(0);

@@ -9,6 +9,7 @@ base_dir = Path(__file__).resolve().parent.parent.parent
 if str(base_dir) not in sys.path:
     sys.path.insert(0, str(base_dir))
 
+from configs.config import settings
 from src.backend.services.i3d_extractor import load_i3d_backbone
 from src.backend.api.translation_router import router as translation_router
 
@@ -38,7 +39,12 @@ app = FastAPI(title="Sign Language Translation API - Monolithic", lifespan=lifes
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=[
+        origin.strip()
+        for origin in settings.CORS_ALLOW_ORIGINS.split(",")
+        if origin.strip()
+    ],
+    allow_origin_regex=settings.CORS_ALLOW_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
