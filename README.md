@@ -110,7 +110,10 @@ create index on public.feedback_samples (request_id);
 > **Important Note:** The training pipelines are **not** included in this inference repository. Training is handled in separate external repositories. This current repository is strictly designed for **inference and deployment**.
 
 ### 2.1. Training the I3D Feature Extractor
+We further fine-tuned the pretrained I3D model on the How2Sign dataset for domain adaptation in continuous sign language translation.  
+The complete training notebook is available on Kaggle:
 
+🔗 https://www.kaggle.com/code/minhkhoathi/finetune-i3d-with-how2sign
 
 ### 2.2. Training the Fairseq Sequence-to-Sequence Model
 Training the translation module is handled in the external repository: [WMT2023 Sign Language Translation Baseline (Merterm/wmt2023_slt)](https://github.com/Merterm/wmt2023_slt).
