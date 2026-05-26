@@ -35,7 +35,8 @@
    ```
 
 4. **Model Setup:**
-   Ensure you have added the `i3d` and `fairseq` model weights into the `models/` directory.
+   The model weight checkpoints (I3D and Fairseq S2T) are managed using DVC. Refer to the [Model Weights Downloader Guide (models/README.md)](models/README.md) for detailed instructions on how to configure credentials and pull them automatically.
+
 
 ### Configuration
 
