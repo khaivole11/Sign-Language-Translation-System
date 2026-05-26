@@ -42,12 +42,14 @@
       pip install "dvc[s3]"
       ```
    
-   b. Configure remote credentials and authentication:
+   b. Configure remote credentials and authentication (use the `--local` flag to keep your credentials safe and prevent them from being committed to Git):
       ```powershell
       dvc remote modify origin auth basic
-      dvc remote modify origin user khaivole11
-      dvc remote modify origin password 3c1734a1e299517442e8a44a9da68cba4e278a91
+      dvc remote modify origin user <YOUR_DAGSHUB_USERNAME> --local
+      dvc remote modify origin password <YOUR_DAGSHUB_TOKEN> --local
       ```
+      *(Note: You can obtain your personal access token on DagsHub under **Settings -> Access Tokens**).*
+
       
    c. Download/Pull all model weights:
       ```powershell

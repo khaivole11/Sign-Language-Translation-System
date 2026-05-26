@@ -3,5 +3,4 @@
 ['remote "origin"']
     url = https://dagshub.com/khaivole11/slt.dvc
     auth = basic
-    user = khaivole11
-    password = 3c1734a1e299517442e8a44a9da68cba4e278a91
+
