@@ -162,6 +162,11 @@ Once training and evaluation (`task generate`) are complete in the external repo
 ### Option A: Using Docker (Recommended)
 You can easily spin up the entire system (both Backend API and Frontend UI) using Docker Compose. This ensures all dependencies and environments are securely isolated.
 
+> [!IMPORTANT]
+> Before running the Docker containers, **you must pull the model weights** to your host machine by following the DVC setup in the [Environment setup (Step 4)](#1-environment-setup) section. The containers mount the local `models/` directory, so it cannot be empty.
+
+
+
 1. Ensure Docker and Docker Compose are installed on your machine.
 2. From the root of the project, run:
    ```bash
