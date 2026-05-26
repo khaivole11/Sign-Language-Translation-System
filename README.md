@@ -34,9 +34,25 @@
    npm install
    ```
 
-4. **Model Setup:**
-   The model weight checkpoints (I3D and Fairseq S2T) are managed using DVC. Refer to the [Model Weights Downloader Guide (models/README.md)](models/README.md) for detailed instructions on how to configure credentials and pull them automatically.
-
+4. **Model Setup (Download Checkpoints via DVC):**
+   The model weights (I3D and Fairseq S2T) are managed using **DVC (Data Version Control)** on DagsHub. Run the following commands in the root of the project to authenticate and pull them:
+   
+   a. Install DVC with S3 support:
+      ```powershell
+      pip install "dvc[s3]"
+      ```
+   
+   b. Configure remote credentials and authentication:
+      ```powershell
+      dvc remote modify origin auth basic
+      dvc remote modify origin user khaivole11
+      dvc remote modify origin password 3c1734a1e299517442e8a44a9da68cba4e278a91
+      ```
+      
+   c. Download/Pull all model weights:
+      ```powershell
+      dvc pull
+      ```
 
 ### Configuration
 

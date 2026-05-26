@@ -10,6 +10,4 @@ venv/
 *.pth.tar
 data/infer_*
 data/feedback/
-/models/fairseq
-/models/i3d
-/models/vocab
+/models
