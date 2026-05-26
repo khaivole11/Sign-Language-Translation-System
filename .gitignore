@@ -10,3 +10,4 @@ venv/
 *.pth.tar
 data/infer_*
 data/feedback/
+/models
